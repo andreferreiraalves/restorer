@@ -5,22 +5,35 @@ const USER: &str = "SYSDBA";
 const PASSWORD: &str = "masterkey";
 const TEMP_PATH: &str = "C:/app/plus/copia/temp";
 const TO_RESTORE_PATH: &str = r"C:\App\Plus\copia\to_restore";
+const Z_PATH: &str = r"C:\Program Files\7-Zip\7z.exe";
 
 fn main() {
-    // restore_database("APP.GBK");
+    // for file in get_all_compressed_files() {
+    //     let path = file.to_str().unwrap();
+    //     let file = file.file_name().unwrap().to_str().unwrap();
 
-    let mut faxvec: Vec<std::path::PathBuf> = Vec::new();
+    //     println!("File: {} with path {}", file, path);
+    // }
+
+    unzip(r"C:\App\Plus\copia\to_restore\APPDATABASE-TERCA-1.7z");
+    print!("Término do processo");
+}
+
+fn get_all_compressed_files() -> Vec<std::path::PathBuf> {
+    let mut files: Vec<std::path::PathBuf> = Vec::new();
     for element in std::path::Path::new(TO_RESTORE_PATH)
         .read_dir()
         .expect(&format!("Error on read files in {}", TO_RESTORE_PATH))
     {
         let path = element.unwrap().path();
         if let Some(extension) = path.extension() {
-            if extension == "txt" {
-                faxvec.push(path);
+            if extension.to_ascii_uppercase() == "7Z" {
+                files.push(path);
             }
         }
     }
+
+    files
 }
 
 fn restore_database(backup_name: &str) {
@@ -46,4 +59,12 @@ fn restore_database(backup_name: &str) {
 
     // println!("stdout: {}", String::from_utf8_lossy(&process.stdout));
     // println!("stderr: {}", String::from_utf8_lossy(&process.stderr));
+}
+
+fn unzip(file: &str) {
+    std::process::Command::new(Z_PATH)
+        .args(&["x", &format!("-o{}", &TEMP_PATH), file])
+        // .spawn()
+        .output()
+        .expect(&format!("Error on unzip file {}", file));
 }
