@@ -1,31 +1,26 @@
 use std::{
-    env::temp_dir,
-    fmt::Error,
     fs::File,
     fs::{self},
-    io,
     process::Stdio,
     thread,
     time::Duration,
 };
-
-const Z_PATH: &str = r"C:\Program Files\7-Zip\7z.exe";
-
-const GBAK: &str = r"C:\Program Files\Firebird\Firebird_3_0\gbak.exe";
-const USER: &str = "SYSDBA";
-const PASSWORD: &str = "masterkey";
 
 const TEMP_PATH: &str = "./temp";
 const TO_RESTORE_PATH: &str = "./to_restore";
 const RESTORED_PATH: &str = "./restored";
 
 fn main() {
+    dotenv::dotenv().ok();
+    let user = std::env::var("USER").expect(".env, USER not found");
+    let gbk_exe = std::env::var("GBAK").expect(".env, GBAK not found");
+    let z_path = std::env::var("Z_PATH").expect(".env, Z_PATH not found");
+    let password = std::env::var("PASSWORD").expect(".env, PASSWORD not found");
+
     create_dir(&TEMP_PATH);
     create_dir(&TO_RESTORE_PATH);
     create_dir(&RESTORED_PATH);
 
-    fs::create_dir(&TO_RESTORE_PATH).expect("Error to create temp dir");
-    fs::create_dir(&RESTORED_PATH).expect("Error to create temp dir");
     loop {
         println!("Verificando arquivos");
         for file in get_all_files(&TO_RESTORE_PATH, "7Z") {
@@ -34,14 +29,14 @@ fn main() {
 
             print!("Iniciando do restore {}", &file_name);
 
-            unzip(path);
+            unzip(&z_path, path);
 
             if let Some(gbk) = get_all_files(&TEMP_PATH, "GBK").first() {
                 let file_gbk = gbk.file_name().unwrap().to_str().unwrap();
 
-                restore_database(&file_gbk);
+                restore_database(&gbk_exe, &user, &password, &file_gbk);
 
-                zip(&file_name);
+                zip(&z_path, &file_name);
 
                 fs::copy(
                     format!("{}/{}", &TEMP_PATH, &file_name),
@@ -79,7 +74,7 @@ fn get_all_files(path: &str, ext: &str) -> Vec<std::path::PathBuf> {
     files
 }
 
-fn restore_database(backup_name: &str) {
+fn restore_database(gbk: &str, user: &str, password: &str, backup_name: &str) {
     let log = format!("{}/log.txt", TEMP_PATH);
     let error_log = format!("{}/error.txt", TEMP_PATH);
     let backup = format!("{}/{}", TEMP_PATH, backup_name);
@@ -90,8 +85,10 @@ fn restore_database(backup_name: &str) {
 
     println!("Iniciando restore do {}", backup_name);
 
-    std::process::Command::new(GBAK)
-        .args(&["-c", &backup, &fdb, "-user", USER, "-pass", PASSWORD, "-v"])
+    std::process::Command::new(&gbk)
+        .args(&[
+            "-c", &backup, &fdb, "-user", &user, "-pass", &password, "-v",
+        ])
         .stdout(Stdio::from(outputs))
         .stderr(Stdio::from(outputerror))
         .output()
@@ -100,17 +97,17 @@ fn restore_database(backup_name: &str) {
     println!("Término restore do {}\n\r", backup_name);
 }
 
-fn unzip(file: &str) {
-    std::process::Command::new(Z_PATH)
+fn unzip(z_path: &str, file: &str) {
+    std::process::Command::new(&z_path)
         .args(&["x", &format!("-o{}", &TEMP_PATH), file])
         .output()
         .expect(&format!("Error on unzip file {}", &file));
 }
 
-fn zip(name_zip: &str) {
+fn zip(z_path: &str, name_zip: &str) {
     println!("Iniciando do zip");
 
-    std::process::Command::new(Z_PATH)
+    std::process::Command::new(&z_path)
         .args(&[
             "a",
             &format!("{}/{}", &TEMP_PATH, &name_zip),
