@@ -1,6 +1,9 @@
 use std::{
+    env::temp_dir,
+    fmt::Error,
     fs::File,
     fs::{self},
+    io,
     process::Stdio,
     thread,
     time::Duration,
@@ -12,11 +15,17 @@ const GBAK: &str = r"C:\Program Files\Firebird\Firebird_3_0\gbak.exe";
 const USER: &str = "SYSDBA";
 const PASSWORD: &str = "masterkey";
 
-const TEMP_PATH: &str = "C:/Users/dev/restore/temp";
-const TO_RESTORE_PATH: &str = r"C:\Users\dev\restore\to_restore";
-const RESTORED_PATH: &str = "C:/Users/dev/restore/restored";
+const TEMP_PATH: &str = "./temp";
+const TO_RESTORE_PATH: &str = "./to_restore";
+const RESTORED_PATH: &str = "./restored";
 
 fn main() {
+    create_dir(&TEMP_PATH);
+    create_dir(&TO_RESTORE_PATH);
+    create_dir(&RESTORED_PATH);
+
+    fs::create_dir(&TO_RESTORE_PATH).expect("Error to create temp dir");
+    fs::create_dir(&RESTORED_PATH).expect("Error to create temp dir");
     loop {
         println!("Verificando arquivos");
         for file in get_all_files(&TO_RESTORE_PATH, "7Z") {
@@ -113,4 +122,10 @@ fn zip(name_zip: &str) {
         .expect(&format!("Error on zip file {}", &name_zip));
 
     println!("Término o zip");
+}
+
+fn create_dir(dir: &str) {
+    if !fs::read_dir(&dir).is_ok() {
+        fs::create_dir(&dir).expect("Error on create temp dir");
+    }
 }
