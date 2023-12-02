@@ -2,6 +2,8 @@ use std::{
     fs::File,
     fs::{self},
     process::Stdio,
+    thread,
+    time::Duration,
 };
 
 const Z_PATH: &str = r"C:\Program Files\7-Zip\7z.exe";
@@ -15,35 +17,39 @@ const TO_RESTORE_PATH: &str = r"C:\Users\dev\restore\to_restore";
 const RESTORED_PATH: &str = "C:/Users/dev/restore/restored";
 
 fn main() {
-    for file in get_all_files(&TO_RESTORE_PATH, "7Z") {
-        let file_name = file.file_name().unwrap().to_str().unwrap();
-        let path = file.to_str().unwrap();
+    loop {
+        println!("Verificando arquivos");
+        for file in get_all_files(&TO_RESTORE_PATH, "7Z") {
+            let file_name = file.file_name().unwrap().to_str().unwrap();
+            let path = file.to_str().unwrap();
 
-        print!("Iniciando do restore {}", &file_name);
+            print!("Iniciando do restore {}", &file_name);
 
-        unzip(path);
+            unzip(path);
 
-        if let Some(gbk) = get_all_files(&TEMP_PATH, "GBK").first() {
-            let file_gbk = gbk.file_name().unwrap().to_str().unwrap();
+            if let Some(gbk) = get_all_files(&TEMP_PATH, "GBK").first() {
+                let file_gbk = gbk.file_name().unwrap().to_str().unwrap();
 
-            restore_database(&file_gbk);
+                restore_database(&file_gbk);
 
-            let file_ziped = format!("{}.7z", &file_name);
-            zip(&file_ziped);
+                zip(&file_name);
 
-            fs::copy(
-                format!("{}/{}", &TEMP_PATH, &file_ziped),
-                format!("{}/{}", &RESTORED_PATH, &file_ziped),
-            )
-            .expect(&format!("Error on copy {}", &file_ziped));
+                fs::copy(
+                    format!("{}/{}", &TEMP_PATH, &file_name),
+                    format!("{}/{}", &RESTORED_PATH, &file_name),
+                )
+                .expect(&format!("Error on copy {}", &file_name));
+            }
+
+            fs::remove_dir_all(&TEMP_PATH).expect(&format!("Error on delete dir {}", &TEMP_PATH));
+            fs::create_dir(&TEMP_PATH).expect(&format!("Error on create dir {}", &TEMP_PATH));
+
+            fs::remove_file(&file).unwrap();
+
+            print!("Término do restore {}", file_name);
         }
 
-        fs::remove_dir_all(&TEMP_PATH).expect(&format!("Error on delete dir {}", &TEMP_PATH));
-        fs::create_dir(&TEMP_PATH).expect(&format!("Error on create dir {}", &TEMP_PATH));
-
-        fs::remove_file(&file).unwrap();
-
-        print!("Término do restore {}", file_name);
+        thread::sleep(Duration::from_secs(10));
     }
 }
 
@@ -82,7 +88,7 @@ fn restore_database(backup_name: &str) {
         .output()
         .expect(&format!("Error on restore database {}", backup_name));
 
-    println!("Término restore do {}", backup_name);
+    println!("Término restore do {}\n\r", backup_name);
 }
 
 fn unzip(file: &str) {
@@ -93,7 +99,7 @@ fn unzip(file: &str) {
 }
 
 fn zip(name_zip: &str) {
-    println!("Iniciando o zip");
+    println!("Iniciando do zip");
 
     std::process::Command::new(Z_PATH)
         .args(&[
