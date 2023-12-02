@@ -19,9 +19,11 @@ fn main() {
         let file_name = file.file_name().unwrap().to_str().unwrap();
         let path = file.to_str().unwrap();
 
+        print!("Iniciando do restore {}", &file_name);
+
         unzip(path);
 
-        for gbk in get_all_files(&TEMP_PATH, "GBK") {
+        if let Some(gbk) = get_all_files(&TEMP_PATH, "GBK").first() {
             let file_gbk = gbk.file_name().unwrap().to_str().unwrap();
 
             restore_database(&file_gbk);
@@ -75,16 +77,12 @@ fn restore_database(backup_name: &str) {
 
     std::process::Command::new(GBAK)
         .args(&["-c", &backup, &fdb, "-user", USER, "-pass", PASSWORD, "-v"])
-        // .spawn()
         .stdout(Stdio::from(outputs))
         .stderr(Stdio::from(outputerror))
         .output()
         .expect(&format!("Error on restore database {}", backup_name));
 
     println!("Término restore do {}", backup_name);
-
-    // println!("stdout: {}", String::from_utf8_lossy(&process.stdout));
-    // println!("stderr: {}", String::from_utf8_lossy(&process.stderr));
 }
 
 fn unzip(file: &str) {
@@ -95,6 +93,8 @@ fn unzip(file: &str) {
 }
 
 fn zip(name_zip: &str) {
+    println!("Iniciando o zip");
+
     std::process::Command::new(Z_PATH)
         .args(&[
             "a",
@@ -105,4 +105,6 @@ fn zip(name_zip: &str) {
         ])
         .output()
         .expect(&format!("Error on zip file {}", &name_zip));
+
+    println!("Término o zip");
 }
